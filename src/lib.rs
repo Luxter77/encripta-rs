@@ -16,7 +16,7 @@ pub fn forward(text: &str) -> String {
         c.encode_utf16(&mut t);
         _ = t.iter_mut().map(| x | { *x = (*x + (MAGIC[n % MAGICL] as u16)) % 255; n += 1; });
         o.extend(char::decode_utf16(t).map(| x | { x.unwrap_or('e') }).filter(| x | { *x != '\0'}));
-        n += 1;
+        // n += 1;
     };
 
     return o.iter().collect();
@@ -32,7 +32,7 @@ pub fn backward(text: &str) -> String {
         c.encode_utf16(&mut t);
         _ = t.iter_mut().map(| x | { *x = (*x - (MAGIC[n % MAGICL] as u16)) % 255; n += 1; });
         o.extend(char::decode_utf16(t).map(| x | { x.unwrap_or('e') }).filter(| x | { *x != '\0'}));
-        n += 1;
+        // n += 1;
     };
 
     return o.iter().collect();
