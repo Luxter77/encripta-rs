@@ -19,8 +19,6 @@ pub fn forward(text: &str) -> String {
         n += 1;
     };
 
-    std::fs::write("foo.txt", o.iter().collect::<String>()).unwrap();
-
     return o.iter().collect();
 }
 
@@ -36,8 +34,6 @@ pub fn backward(text: &str) -> String {
         o.extend(char::decode_utf16(t).map(| x | { x.unwrap_or('e') }).filter(| x | { *x != '\0'}));
         n += 1;
     };
-
-    std::fs::write("foo.txt", o.iter().collect::<String>()).unwrap();
 
     return o.iter().collect();
 }

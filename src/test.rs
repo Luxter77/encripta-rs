@@ -9,6 +9,7 @@ static TESTS: [(&'static str, &'static str); 1] = [
         println!("assert> {s:?} => {d:?}", s=s.as_bytes(), d=d.as_bytes());
         
         let r = super::forward(s);
+        std::fs::write("foo.txt", r.clone()).unwrap();
         
         println!("ress>>> {s:?} => {r:?}", s=s.as_bytes(), r=r.as_bytes());
         assert_eq!(r.as_str(), s)
@@ -21,7 +22,8 @@ static TESTS: [(&'static str, &'static str); 1] = [
         println!("assert> {d:?} => {s:?}", d=d.as_bytes(), s=s.as_bytes());
         
         let r = super::backward(d);
-        
+        std::fs::write("foo.txt", r.clone()).unwrap();
+
         println!("ress>>> {d:?} => {r:?}", d=d.as_bytes(), r=r.as_bytes());
         assert_eq!(d, r.as_str())
     };
