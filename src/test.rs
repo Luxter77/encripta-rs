@@ -1,4 +1,4 @@
-use encoding::{Encoding, EncoderTrap, all::WINDOWS_1253 as CODEC, DecoderTrap};
+use encoding::{Encoding, EncoderTrap, all::WINDOWS_1253 as CODEC};
 
 static TESTS: [(&'static str, &'static str); 1] = [
     ("10.10.70.32", "„yot]ƒ…zp†{" )
