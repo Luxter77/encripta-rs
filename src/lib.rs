@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)] // stilistic choise
+
 use encoding::{Encoding, DecoderTrap, EncoderTrap, all::WINDOWS_1253 as CODEC};
 
 /// magic words to trigger the dark ritual: "SIAC-UNJBG"
