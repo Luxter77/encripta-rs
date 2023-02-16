@@ -1,39 +1,35 @@
-use std::str::Chars;
+use encoding::{Encoding, DecoderTrap, EncoderTrap, all::WINDOWS_1253 as CODEC};
 
-const MAGIC:  [u8; 10] = *b"SIAC-UNJBG";
-const MAGICL: usize    = MAGIC.len(); // 10
-
+/// magic words to trigger the dark ritual: "SIAC-UNJBG"
+const MAGIC:  [u8; 10] = [83, 73, 65, 67, 45, 85, 78, 74, 66, 71]; // "SIAC-UNJBG"
+/// 9usize
+const MAGICL: usize    = MAGIC.len() - 1; // I don't know
 
 #[cfg(test)] mod test;
 
-pub fn forward(text: &str) -> String {
-    let     chars: Chars     = text.chars();
-    let mut o:     Vec<char> = Vec::new();
-    let mut t:     [u16; 2]  = [0; 2];
-    let mut n:     usize     = 0;
+// pub fn decypher(_original: &str, _encoded: &str) -> Vec<u8> { Vec::new() }
 
-    for c in chars {
-        c.encode_utf16(&mut t);
-        let _: Vec<()> = t.iter_mut().map(| x | { *x = (*x + (MAGIC[n % MAGICL] as u16)) % 255; n += 1; }).collect();
-        o.extend(char::decode_utf16(t).map(| x | { x.unwrap_or('e') }).filter(| x | { *x != '\0'}));
-        // n += 1;
+pub fn forward(text: &str) -> Vec<u8> {
+    let mut o: Vec<u8> = CODEC.encode(text, EncoderTrap::Strict).unwrap();
+
+    for (n, c) in o.iter_mut().enumerate() {
+        *c = c.wrapping_add(MAGIC[n % MAGICL]);
     };
 
-    return o.iter().collect();
+    println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
+
+    return o;
 }
 
-pub fn backward(text: &str) -> String {
-    let     chars: Chars     = text.chars();
-    let mut o:     Vec<char> = Vec::new();
-    let mut t:     [u16; 4]  = [0; 4];
-    let mut n:     usize     = 0;
+pub fn backward(text: &str) -> Vec<u8> {
+    let mut o: Vec<u8> = CODEC.encode(text, EncoderTrap::Strict).unwrap();
 
-    for c in chars {
-        c.encode_utf16(&mut t);
-        let _: Vec<()> = t.iter_mut().map(| x | { *x = (*x - (MAGIC[n % MAGICL] as u16)) % 255; n += 1; }).collect();
-        o.extend(char::decode_utf16(t).map(| x | { x.unwrap_or('e') }).filter(| x | { *x != '\0'}));
-        // n += 1;
+    for (n, c) in o.iter_mut().enumerate() {
+        *c = c.wrapping_sub(MAGIC[n % MAGICL]);
     };
 
-    return o.iter().collect();
+    println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
+
+    return o;
+
 }
