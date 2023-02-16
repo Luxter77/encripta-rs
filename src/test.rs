@@ -1,15 +1,12 @@
-use encoding::{Encoding, EncoderTrap, all::WINDOWS_1253 as CODEC};
-
 static TESTS: [(&'static str, &'static str); 1] = [
     ("10.10.70.32", "„yot]ƒ…zp†{" )
 ]; 
 
 #[test] fn forwards() {
     for (s, d) in TESTS {
-        let r = super::forward(s);
-        let dd = CODEC.encode(d, EncoderTrap::NcrEscape).unwrap();
+        let r: String = super::forward(s);
         std::fs::write("foo.txt", r.clone()).unwrap();
-        assert_eq!(r.as_slice(), dd.as_slice());
+        assert_eq!(r.as_str(), d);
     };
 }
 
@@ -17,15 +14,15 @@ static TESTS: [(&'static str, &'static str); 1] = [
     for (s, d) in TESTS {
         let r = super::backward(d);
         std::fs::write("foo.txt", r.clone()).unwrap();
-        assert_eq!(s.as_bytes(), r.as_slice());
+        assert_eq!(s, r.as_str());
     };
 }
 
 #[test] fn roundtrip() {
     for (s, d) in TESTS {
-        let r: String = CODEC.decode(&super::forward(s), encoding::DecoderTrap::Strict).unwrap();
-        assert_eq!(CODEC.decode(super::backward(r.as_str()).as_slice(), encoding::DecoderTrap::Strict).unwrap(), s);
-        let r: String = CODEC.decode(&super::backward(d), encoding::DecoderTrap::Strict).unwrap();
-        assert_eq!(CODEC.decode(super::forward(r.as_str()).as_slice(), encoding::DecoderTrap::Strict).unwrap(), d);
+        let r: String = super::forward(s);
+        assert_eq!(super::backward(r.as_str()).as_str(), s);
+        let r: String = super::backward(d);
+        assert_eq!(super::forward(r.as_str()).as_str(), d);
     };
 }

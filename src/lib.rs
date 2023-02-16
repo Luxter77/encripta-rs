@@ -11,7 +11,7 @@ const MAGICL: usize    = MAGIC.len() - 1; // I don't know
 
 // pub fn decypher(_original: &str, _encoded: &str) -> Vec<u8> { Vec::new() }
 
-pub fn forward(text: &str) -> Vec<u8> {
+pub fn forward(text: &str) -> String {
     let mut o: Vec<u8> = CODEC.encode(text, EncoderTrap::Strict).unwrap();
 
     for (n, c) in o.iter_mut().enumerate() {
@@ -20,10 +20,10 @@ pub fn forward(text: &str) -> Vec<u8> {
 
     println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
 
-    return o;
+    return CODEC.decode(o.as_slice(), encoding::DecoderTrap::Strict).unwrap();
 }
 
-pub fn backward(text: &str) -> Vec<u8> {
+pub fn backward(text: &str) -> String {
     let mut o: Vec<u8> = CODEC.encode(text, EncoderTrap::Strict).unwrap();
 
     for (n, c) in o.iter_mut().enumerate() {
@@ -32,6 +32,6 @@ pub fn backward(text: &str) -> Vec<u8> {
 
     println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
 
-    return o;
+    return CODEC.decode(o.as_slice(), encoding::DecoderTrap::Strict).unwrap();
 
 }
