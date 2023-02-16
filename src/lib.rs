@@ -18,8 +18,6 @@ pub fn forward(text: &str) -> String {
         *c = c.wrapping_add(MAGIC[n % MAGICL]);
     };
 
-    println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
-
     return CODEC.decode(o.as_slice(), encoding::DecoderTrap::Strict).unwrap();
 }
 
@@ -29,8 +27,6 @@ pub fn backward(text: &str) -> String {
     for (n, c) in o.iter_mut().enumerate() {
         *c = c.wrapping_sub(MAGIC[n % MAGICL]);
     };
-
-    println!("{}", CODEC.decode(o.as_ref(), DecoderTrap::Strict).unwrap());
 
     return CODEC.decode(o.as_slice(), encoding::DecoderTrap::Strict).unwrap();
 
