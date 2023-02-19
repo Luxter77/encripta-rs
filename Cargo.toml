@@ -1,9 +1,29 @@
 [package]
 name = "encripta-rs"
+readme = "README.md"
+license-file = "LICENSE.md"
 version = "0.1.0"
 edition = "2021"
+description = "God has decided me live another day and now you have to live with me"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 encoding = "0.2.33"
+iced = { version = "0.7.0", optional = true }
+once_cell = {  version = "1.15", optional = true }
+
+clap = { version = "4.1.6", optional = true }
+
+[features]
+gui = ["dep:iced", "dep:once_cell"]
+
+[lib]
+path = "./src/lib.rs"
+name = "encripta"
+test = true
+
+[[bin]]
+path = "./src/encripta-gui.rs"
+name = "encripta-gui"
+required-features = ["gui"]
