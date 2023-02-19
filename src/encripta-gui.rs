@@ -1,12 +1,13 @@
-use iced::alignment::Horizontal;
+use iced::alignment::{Horizontal, Vertical};
 use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::Theme;
-use iced::widget::{self, button, column, container, row, text, text_input};
+use iced::widget::{self, button, column, scrollable, container, row, text, text_input};
 use iced::{alignment, window, Font, Settings};
 use iced::{Application, Element};
 use iced::{Color, Command, Length, Subscription};
+use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
 use once_cell::sync::Lazy;
 
@@ -37,12 +38,12 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
 pub(crate) struct State {
     input_value:  String,
     output_value: String,
     cypher:       String,
     direction:    Direction,
+    clip:         ClipboardContext,
 }
 
 impl Default for State {
@@ -52,6 +53,7 @@ impl Default for State {
             output_value: String::new(),
             cypher:       String::from_utf8(encripta::MAGIC.to_vec()).unwrap(),
             direction:    Direction::default(),
+            clip:         ClipboardContext::new().unwrap(),
         }
     }
 }
@@ -62,6 +64,7 @@ pub(crate) enum Message {
     CypherChanged(String),
     TabPressed { shift: bool },
     SwitchDirection,
+    ToClipboard,
     ProcessText,
 }
 
@@ -141,6 +144,10 @@ impl Application for State {
                 self.direction = self.direction.switched();
                 self.shift_update();
                 Command::none()
+            },
+            Message::ToClipboard => {
+                self.clip.set_contents(self.output_value.clone()).unwrap();
+                Command::none()
             }
         }
     }
@@ -155,33 +162,38 @@ impl Application for State {
         let input = text_input("INPUT: ", self.input_value.as_str(), Message::InputChanged)
             .id(INPUT_ID.clone())
             .padding(10)
-            .font(CHARACTERS)
+            .font(FONT)
             .size(18)
             .on_submit(Message::ProcessText);
+
         let cypher = text_input("CYPHER:", self.cypher.as_str(), Message::CypherChanged)
             .id(CYPHER_ID.clone())
             .padding(10)
-            .font(CHARACTERS)
+            .font(FONT)
             .size(16)
             .on_submit(Message::ProcessText);
-        let directionswitch = button(text(self.direction).font(CHARACTERS).size(16))
+
+        let directionswitch = button(text(self.direction).font(FONT).size(16))
             .on_press(Message::SwitchDirection)
             .padding(10)
             .width(Length::Fill);
+
         let output = text(self.output_value.as_str())
-            .font(CHARACTERS)
+            .font(FONT)
             .size(24)
             .width(Length::Fill)
             .horizontal_alignment(Horizontal::Center);
 
+        let copy = button(text("Copy").font(FONT).size(16).horizontal_alignment(Horizontal::Center).vertical_alignment(Vertical::Center)).on_press(Message::ToClipboard).width(Length::Shrink).padding(5);
+
         let content = column![
-            title,
-            input,
-            row(vec![cypher.into(), directionswitch.into()]).padding(10).width(Length::Fill),
-            output
+            title, input,
+            row(vec![cypher.into(), directionswitch.into()]).padding(10).width(Length::Fill).spacing(10),
+            container(copy).center_x().center_y(),
+            scrollable(output),
         ]
         .spacing(20)
-        .max_width(800);
+        .max_width(500);
 
         container(content)
             .width(Length::Fill)
@@ -208,7 +220,7 @@ impl Application for State {
 }
 
 // Fonts
-const CHARACTERS: Font = Font::External {
+const FONT: Font = Font::External {
     name: "Unifont",
     bytes: include_bytes!("../assets/unifont.ttf"),
 };
