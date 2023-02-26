@@ -1,22 +1,31 @@
+use cli_clipboard::{ClipboardContext, ClipboardProvider};
 use iced::alignment::{Horizontal, Vertical};
 use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::Theme;
-use iced::widget::{self, button, column, scrollable, container, row, text, text_input};
+use iced::widget::{self, button, column, container, row, scrollable, text, text_input};
 use iced::{alignment, window, Font, Settings};
 use iced::{Application, Element};
 use iced::{Color, Command, Length, Subscription};
-use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
 use once_cell::sync::Lazy;
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 static CYPHER_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
+static APP_TITLE: Lazy<widget::Text> = Lazy::new(|| {
+    iced::widget::Text::new("Encripta-RS")
+        .width(Length::Fill)
+        .size(70)
+        .style(Color::from([0.7, 0.5, 0.5]))
+        .horizontal_alignment(alignment::Horizontal::Center)
+});
+
 #[derive(Default, Debug, Clone, Copy)]
 pub(crate) enum Direction {
-    #[default] Forward,
+    #[default]
+    Forward,
     Backward,
 }
 
@@ -39,66 +48,73 @@ impl Direction {
 }
 
 pub(crate) struct State {
-    input_value:  String,
-    output_value: String,
-    cypher:       String,
-    direction:    Direction,
-    clip:         ClipboardContext,
+    input_value: String,
+    output_tvalue: Option<String>,
+    output_message: Option<String>,
+    output_bvalue: Option<Vec<u8>>,
+    cypher: String,
+    direction: Direction,
+    clip: ClipboardContext,
 }
 
 impl Default for State {
     fn default() -> Self {
         Self {
-            input_value:  String::new(),
-            output_value: String::new(),
-            cypher:       String::from_utf8(encripta::MAGIC.to_vec()).unwrap(),
-            direction:    Direction::default(),
-            clip:         ClipboardContext::new().unwrap(),
+            input_value: String::new(),
+            output_tvalue: None,
+            output_message: None,
+            output_bvalue: Some(Vec::new()),
+            cypher: String::from_utf8(encripta::MAGIC.to_vec()).unwrap(),
+            direction: Direction::default(),
+            clip: ClipboardContext::new().unwrap(),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum Message {
-    InputChanged(String),
-    CypherChanged(String),
     TabPressed { shift: bool },
+    CypherChanged(String),
+    InputChanged(String),
+    BinaryToClipboard,
+    TextToClipboard,
     SwitchDirection,
-    ToClipboard,
     ProcessText,
 }
 
 impl State {
     fn shift_update(&mut self) {
-        self.output_value = match self.direction {
+        let o: Result<String, encripta::ShiftError> = match self.direction {
             Direction::Forward => {
-                match encripta::forward(self.input_value.as_str(), self.cypher.as_bytes()) {
-                    Ok(t) => t,
-                    Err(e) => match e {
-                        encripta::ShiftError::NonRepresentableInput(e) => {
-                            format!("Input Error: {e}")
-                        }
-                        encripta::ShiftError::NonRepresentableOutput((b, e)) => {
-                            format!("Output Error: {e}\n\tRaw output: {b:?}")
-                        }
-                        encripta::ShiftError::InvalidCypher(e) => format!("Cypher Error: {e}"),
-                    },
-                }
+                encripta::forward(self.input_value.as_str(), self.cypher.as_bytes())
             }
             Direction::Backward => {
-                match encripta::backward(self.input_value.as_str(), self.cypher.as_bytes()) {
-                    Ok(t) => t,
-                    Err(e) => match e {
-                        encripta::ShiftError::NonRepresentableInput(e) => {
-                            format!("Input Error: {e}")
-                        }
-                        encripta::ShiftError::NonRepresentableOutput((b, e)) => {
-                            format!("Output Error: {e}\n\tRaw output: {b:?}")
-                        }
-                        encripta::ShiftError::InvalidCypher(e) => format!("Cypher Error: {e}"),
-                    },
-                }
+                encripta::backward(self.input_value.as_str(), self.cypher.as_bytes())
             }
+        };
+        match o {
+            Ok(t) => {
+                self.output_message = None;
+                self.output_bvalue = Some(t.as_bytes().to_vec());
+                self.output_tvalue = Some(t);
+            }
+            Err(e) => match e {
+                encripta::ShiftError::NonRepresentableInput(e) => {
+                    self.output_message = Some(format!("Input Error: {e}"));
+                    self.output_bvalue = None;
+                    self.output_tvalue = None;
+                }
+                encripta::ShiftError::InvalidCypher(e) => {
+                    self.output_message = Some(format!("Cypher Error: {e}"));
+                    self.output_bvalue = None;
+                    self.output_tvalue = None;
+                }
+                encripta::ShiftError::NonRepresentableOutput((b, e)) => {
+                    self.output_message = Some(format!("Output Error: {e}"));
+                    self.output_bvalue = Some(b);
+                    self.output_tvalue = None;
+                }
+            },
         };
     }
 }
@@ -145,52 +161,101 @@ impl Application for State {
                 self.shift_update();
                 Command::none()
             },
-            Message::ToClipboard => {
-                self.clip.set_contents(self.output_value.clone()).unwrap();
+            Message::TextToClipboard => {
+                if let Some(o) = self.output_tvalue.clone() {
+                    self.clip.set_contents(o).unwrap()
+                };
                 Command::none()
-            }
+            },
+            Message::BinaryToClipboard => {
+                if let Some(o) = self.output_bvalue.clone() {
+                    self.clip.set_contents(format!("{:?}", o)).unwrap()
+                };
+                Command::none()
+            },
         }
     }
 
     fn view(&self) -> Element<Message> {
-        let title = text("Encripta-RS")
-            .width(Length::Fill)
-            .size(70)
-            .style(Color::from([0.7, 0.5, 0.5]))
-            .horizontal_alignment(alignment::Horizontal::Center);
+        let input: widget::TextInput<Message> =
+            text_input("INPUT: ", self.input_value.as_str(), Message::InputChanged)
+                .id(INPUT_ID.clone())
+                .on_submit(Message::ProcessText)
+                .padding(10)
+                .font(FONT)
+                .size(18);
 
-        let input = text_input("INPUT: ", self.input_value.as_str(), Message::InputChanged)
-            .id(INPUT_ID.clone())
-            .padding(10)
-            .font(FONT)
-            .size(18)
-            .on_submit(Message::ProcessText);
+        let cypher: widget::TextInput<Message> =
+            text_input("CYPHER:", self.cypher.as_str(), Message::CypherChanged)
+                .id(CYPHER_ID.clone())
+                .on_submit(Message::ProcessText)
+                .padding(10)
+                .font(FONT)
+                .size(16);
 
-        let cypher = text_input("CYPHER:", self.cypher.as_str(), Message::CypherChanged)
-            .id(CYPHER_ID.clone())
-            .padding(10)
-            .font(FONT)
-            .size(16)
-            .on_submit(Message::ProcessText);
+        let directionswitch: widget::Button<Message> =
+            button(text(self.direction).font(FONT).size(16))
+                .on_press(Message::SwitchDirection)
+                .padding(10)
+                .width(Length::Fill);
 
-        let directionswitch = button(text(self.direction).font(FONT).size(16))
-            .on_press(Message::SwitchDirection)
-            .padding(10)
-            .width(Length::Fill);
+        let mut copyt: widget::Button<Message> = button(
+            text("Copy Text")
+                .font(FONT)
+                .size(16)
+                .horizontal_alignment(Horizontal::Center)
+                .vertical_alignment(Vertical::Center),
+        )
+        .width(Length::Shrink)
+        .padding(5);
 
-        let output = text(self.output_value.as_str())
-            .font(FONT)
-            .size(24)
-            .width(Length::Fill)
-            .horizontal_alignment(Horizontal::Center);
+        let mut copyb: widget::Button<Message> = button(
+            text("Copy Binary")
+                .font(FONT)
+                .size(16)
+                .horizontal_alignment(Horizontal::Center)
+                .vertical_alignment(Vertical::Center),
+        )
+        .width(Length::Shrink)
+        .padding(5);
 
-        let copy = button(text("Copy").font(FONT).size(16).horizontal_alignment(Horizontal::Center).vertical_alignment(Vertical::Center)).on_press(Message::ToClipboard).width(Length::Shrink).padding(5);
+        let output_box: widget::Text = if let Some(t) = self.output_tvalue.clone() {
+            copyt = copyt.on_press(Message::TextToClipboard);
+            copyb = copyb.on_press(Message::BinaryToClipboard);
+            text(t)
+        } else {
+            text(String::new())
+        }
+        .font(FONT)
+        .size(24)
+        .width(Length::Fill)
+        .horizontal_alignment(Horizontal::Center);
+
+        let output_message: widget::Text = if let Some(t) = self.output_message.clone() {
+            copyb = copyb.on_press(Message::BinaryToClipboard);
+            text(t)
+        } else {
+            text(String::new())
+        }
+        .font(FONT)
+        .size(22)
+        .width(Length::Fill)
+        .horizontal_alignment(Horizontal::Center)
+        .style(Color::from([0.3, 0.3, 0.3]));
 
         let content = column![
-            title, input,
-            row(vec![cypher.into(), directionswitch.into()]).padding(10).width(Length::Fill).spacing(10),
-            container(copy).center_x().center_y(),
-            scrollable(output),
+            APP_TITLE.clone(),
+            input,
+            row(vec![cypher.into(), directionswitch.into()])
+                .padding(10)
+                .width(Length::Fill)
+                .spacing(10),
+            row(vec![copyt.into(), copyb.into()])
+                .padding(10)
+                .width(Length::Fill)
+                .spacing(10),
+            scrollable(output_message),
+            scrollable(output_box),
         ]
         .spacing(20)
         .max_width(500);
